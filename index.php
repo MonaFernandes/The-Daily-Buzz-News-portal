@@ -8,14 +8,27 @@
   <div class="container">
     <div class="row">
       <?php
-
-        $user_sql =  "SELECT COUNT(user_id) 
-                        AS no_of_users 
-                        FROM user";
-        $user_result = mysqli_query($con,$user_sql);
-        $user_data = mysqli_fetch_assoc($user_result);
-        $no_of_users = $user_data['no_of_users'];
+        
+        $cat_sql = "SELECT COUNT(category_id) 
+                    AS no_of_categories 
+                    FROM category";
+        $cat_result = mysqli_query($con,$cat_sql);
+        $cat_data = mysqli_fetch_assoc($cat_result);
+        $no_of_categories = $cat_data['no_of_categories'];
                 
+        $book_sql =  "SELECT COUNT(bookmark_id) 
+                      AS no_of_bookmarks 
+                      FROM article,bookmark 
+                      WHERE article.author_id = {$author_id} 
+                      AND bookmark.article_id = article.article_id";
+        $book_result = mysqli_query($con,$book_sql);
+        $book_data = mysqli_fetch_assoc($book_result);
+        $no_of_bookmarks = $book_data['no_of_bookmarks'];
+        
+        // echo "<pre>";
+        // print_r($book_data);
+        // echo "</pre>";
+        
         require('./includes/quick-links.inc.php');
       ?>
       <div class="col-md-9">
@@ -46,10 +59,10 @@
             <div class="col-md-4">
               <div class="well dash-box">
                 <h2>
-                  <span class="glyphicon glyphicon-user"></span>
-                  <?php echo $no_of_users;?>
+                  <span class="glyphicon glyphicon-bookmark"></span>
+                  <?php echo $no_of_bookmarks;?>
                 </h2>
-                <h4>Users</h4>
+                <h4>Bookmarks</h4>
               </div>
             </div>
           </div>
@@ -65,11 +78,10 @@
         $sql = "SELECT article.article_title, 
                 article.article_date, 
                 article.article_image, 
-                category.category_name,
-                author.author_name 
-                FROM article, category, author
-                WHERE article.category_id = category.category_id 
-                AND article.author_id  = author.author_id
+                category.category_name 
+                FROM article, category 
+                WHERE article.author_id = {$author_id} 
+                AND article.category_id = category.category_id 
                 ORDER BY article_date DESC
                 LIMIT 4";
         $result = mysqli_query($con,$sql);
@@ -87,14 +99,12 @@
                 <th>Title</th>
                 <th>Category</th>
                 <th>Image</th>
-                <th>Author Name</th>
                 <th>Published On</th>
               </tr>
               <?php
                 if($row > 0) {
                   while($data = mysqli_fetch_assoc($result)) {
                     $category_name = $data['category_name'];
-                    $author_name = $data['author_name'];
                     $article_title = $data['article_title'];
                     $article_image = $data['article_image'];
                     $article_date = $data['article_date'];
@@ -112,9 +122,6 @@
                           <img src="../assets/images/articles/'.$article_image.'" />
                         </td>
                         <td>
-                          '.$author_name.'
-                        </td>
-                        <td>
                           '.$article_date.'
                         </td>
                       </tr>
@@ -122,7 +129,7 @@
                   }
                   echo '
                     <tr>
-                      <td colspan="5" align="center" style="padding-top: 2rem;">
+                      <td colspan="4" align="center" style="padding-top: 2rem;">
                         <a href="./articles.php" class="btn btn-danger ">View All</a>
                       </td>
                     </tr>

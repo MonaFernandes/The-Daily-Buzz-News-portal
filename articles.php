@@ -1,10 +1,10 @@
 <?php
-require('./includes/nav.inc.php');  
+  require('./includes/nav.inc.php');  
 ?>
 
 <script>
 function deleteConfirm(id) {
-  if (confirm("Are you sure you want to delete this article ?")) {
+  if (confirm("Are you sure you want to delete this article?")) {
     var url = "./delete-article.php?id=" + id;
     document.location = url;
   }
@@ -25,8 +25,8 @@ function deleteConfirm(id) {
   <div class="container">
     <div class="col-md-12">
       <?php
-        $limit = 6;
-        if (isset($_GET['page'])) {
+        $limit = 5;
+        if(isset($_GET['page'])) {
           $page = $_GET['page'];
         } else {
           $page = 1;
@@ -35,17 +35,17 @@ function deleteConfirm(id) {
         $sql = "SELECT article.article_title, 
                 article.article_id, 
                 article.article_date, 
-                author.author_name, 
                 article.article_image, 
-                article.article_trend, 
                 article.article_active, 
                 article.article_description, 
+                article.article_videos,  /* Include article_videos field */
                 category.category_name 
-                FROM article, category, author
-                WHERE article.category_id = category.category_id
-                AND article.author_id = author.author_id
-                ORDER BY article.article_date DESC
-                LIMIT {$offset},{$limit}";
+                FROM article, category 
+                WHERE article.author_id = {$author_id} 
+                AND article.category_id = category.category_id
+                ORDER BY article.article_date DESC,
+                article.article_id DESC
+                LIMIT {$offset}, {$limit}";
         $result = mysqli_query($con, $sql);
         $row = mysqli_num_rows($result);
       ?>
@@ -60,23 +60,23 @@ function deleteConfirm(id) {
               <th style="min-width: 120px">Category</th>
               <th style="min-width: 250px">Content</th>
               <th style="min-width: 90px">Image</th>
-              <th style="min-width: 130px">Author</th>
-              <th style="min-width: 100px">Published On</th>
+              <th style="min-width: 50px">Active</th>
+              <th style="min-width: 130px">Published On</th>
+              <th style="min-width: 150px">Video URL</th> <!-- New column for Video URL -->
               <th style="min-width: 150px">Actions</th>
             </tr>
             <?php
-                if ($row > 0) {
-                  while ($data = mysqli_fetch_assoc($result)) {
+                if($row > 0) {
+                  while($data = mysqli_fetch_assoc($result)) {
                     $category_name = $data['category_name'];
                     $article_id = $data['article_id'];
                     $article_title = $data['article_title'];
-                    $article_trend = $data['article_trend'];
                     $article_desc = $data['article_description'];
                     $article_image = $data['article_image'];
                     $article_date = $data['article_date'];
-                    $article_author = $data['author_name'];
                     $article_active = $data['article_active'];
-
+                    $article_videos = $data['article_videos']; // Video URL
+                    
                     $article_desc = substr($article_desc, 0, 100);
                     $article_date = date("d M y", strtotime($article_date));
 
@@ -86,43 +86,34 @@ function deleteConfirm(id) {
                         <td>'.$category_name.'</td>
                         <td>'.$article_desc.'</td>
                         <td><img src="../assets/images/articles/'.$article_image.'" /></td>
-                        <td>'.$article_author.'</td>
-                        <td>'.$article_date.'</td>
                         <td>';
-                        if ($article_trend > 0) {
-                          echo '
-                          <a class="btn btn-danger" href="./deactivate-trend.php?id='.$article_id.'" title="Remove Article Trend">
-                            <span class="glyphicon glyphicon-heart"></span>
-                          </a>';
+                        if($article_active > 0) {
+                          echo '<span class="glyphicon glyphicon-ok text-success"></span>';
                         } else {
-                          echo '
-                          <a class="btn btn-warning" href="./activate-trend.php?id='.$article_id.'" title="Make Article Trending">
-                            <span class="glyphicon glyphicon-heart-empty"></span>
-                          </a>';
+                          echo '<span class="glyphicon glyphicon-remove text-danger"></span>';
                         }
-                        if ($article_active > 0) {
-                          echo '
-                          <a class="btn btn-success" href="./deactivate-article.php?id='.$article_id.'" title="Deactivate Article">
-                            <span class="glyphicon glyphicon-eye-open"></span>
-                          </a>';
-                        } else {
-                          echo '
-                          <a class="btn btn-info" href="./activate-article.php?id='.$article_id.'" title="Activate Article">
-                            <span class="glyphicon glyphicon-eye-close"></span>
-                          </a>';
-                        }
-                        echo '
-                          <a class="btn btn-danger" href="javascript:deleteConfirm('.$article_id.')" title="Delete Article">
+                        echo '</td>
+                        <td>'.$article_date.'</td>
+                        <td>'.$article_videos.'</td> <!-- Display Video URL -->
+                        <td>
+                          <a class="btn btn-primary" href="./edit-article.php?id='.$article_id.'">
+                            <span class="glyphicon glyphicon-pencil"></span>
+                          </a>
+                          <a class="btn btn-danger" href="javascript:deleteConfirm('.$article_id.')">
                             <span class="glyphicon glyphicon-trash"></span>
                           </a>
                         </td>
-                      </tr>';
+                      </tr>
+                    ';
                   }
                 } else {
                   echo '
-                    <td colspan="7" align="center" style="padding-top: 28px; color: var(--active-color);">
-                      <h4>Authors need to start writing !</h4>
-                    </td>';
+                    <tr>
+                      <td colspan="8" align="center" style="padding-top: 28px; color: var(--active-color);">
+                        <h4>You need to start writing '.$_SESSION['AUTHOR_NAME'].'!</h4>
+                      </td>
+                    </tr>
+                  ';
                 }
               ?>
           </table>
@@ -130,16 +121,16 @@ function deleteConfirm(id) {
         <div class="text-center">
           <ul class="pagination pg-red">
             <?php
-              $paginationQuery = "SELECT * FROM article";
+              $paginationQuery = "SELECT * FROM article WHERE author_id = $author_id";
               $paginationResult = mysqli_query($con, $paginationQuery);
-              if (mysqli_num_rows($paginationResult) > 0) {
+              if(mysqli_num_rows($paginationResult) > 0) {
                 $total_articles = mysqli_num_rows($paginationResult);
                 $total_page = ceil($total_articles / $limit);
 
-                if ($page > $total_page) {
+                if($page > $total_page) {
                   redirect('./articles.php');
                 }
-                if ($page > 1) {
+                if($page > 1) {
                   echo '
                     <li class="page-item">
                       <a href="articles.php?page='.($page - 1).'" class="page-link">
@@ -147,11 +138,14 @@ function deleteConfirm(id) {
                       </a>
                     </li>';
                 }
-                for ($i = 1; $i <= $total_page; $i++) {
-                  $active = ($i == $page) ? "active" : "";
+                for($i = 1; $i <= $total_page; $i++) {
+                  $active = "";
+                  if($i == $page) {
+                    $active = "active";
+                  }
                   echo '<li class="page-item '.$active.'"><a href="./articles.php?page='.$i.'" class="page-link">'.$i.'</a></li>';
                 }
-                if ($total_page > $page) {
+                if($total_page > $page){
                   echo '
                     <li class="page-item">
                       <a href="articles.php?page='.($page + 1).'" class="page-link">
@@ -169,5 +163,5 @@ function deleteConfirm(id) {
 </section>
 
 <?php
-require('./includes/footer.inc.php');
+  require('./includes/footer.inc.php');
 ?>
