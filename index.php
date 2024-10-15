@@ -1,161 +1,151 @@
 <?php
-  // Fetching all the Navbar Data
   require('./includes/nav.inc.php');
-
-  // Fetching all the Slider Data
-  require('./includes/slider.inc.php');
+  
 ?>
 
-<!-- Article List Container -->
-<section class="py-1 category-list">
+
+<section id="main">
   <div class="container">
-    <h2 class="headings">Articles</h2>
-    <div class="card-container">
+    <div class="row">
       <?php
 
-        // Article Query to fetch maximum 5 random articles
-        $articleQuery = " SELECT category.category_name, category.category_color, article.*
-                          FROM category, article
-                          WHERE article.category_id = category.category_id
-                          AND article.article_active = 1
-                          ORDER BY RAND() LIMIT 5";
-        
-        // Running Article Query 
-        $result = mysqli_query($con,$articleQuery);
-
-        // Row stores the no of rows in the return data from Query
-        $row = mysqli_num_rows($result);
-        
-        // If query has any result (records) => If any articles are present
-        if($row > 0) {
-          
-          // Fetching the data of particular record as an Associative Array
-          while($data = mysqli_fetch_assoc($result)) {
-            
-            // Storing the article data in variables
-            $category_color = $data['category_color'];
-            $category_name = $data['category_name'];
-            $category_id = $data['category_id'];
-            $article_id = $data['article_id'];
-            $article_title = $data['article_title'];
-            $article_image = $data['article_image'];
-            $article_desc = $data['article_description'];
-            $article_date = $data['article_date'];
-            $article_trend = $data['article_trend'];
-            $article_videos = $data['article_videos'];
-            
-            // Updating the title with a substring containing at most length of 55 characters
-            $article_title = substr($article_title,0,55).' . . . . .';
-            
-            // Updating the description with a substring containing at most length of 150 characters
-            $article_desc = substr($article_desc,0,150).' . . . . .';
-            
-            // New variable to determine if the article is NEW
-            $new = false;
-
-            // Fetching present timestamp
-            $tdy = time();
-
-            // Article date is updated to a timestamp 
-            $article_date = strtotime($article_date);
-            
-            // Found the difference between the article release timestamp and present timestamp
-            $datediff = $tdy - $article_date;
-
-            // Converting the difference into no of days
-            $datediff = round($datediff / (60*60*24));
-
-            // If the difference is less than 2 => article is less than 2 days older
-            if($datediff < 2) {
-              
-              // Updating the variable to true to have a new tag on article card
-              $new = true;
-            }
-            
-            // Bookmarked variable to determine if the article is bookmarked by the user
-            $bookmarked = false;
-            
-            // Checking if the user is logged in
-            if(isset($_SESSION['USER_ID'])) {
-              
-              // Bookmark Query to check if the particular article is bookmarked by user
-              $bookmarkQuery = "SELECT * FROM bookmark 
-                                WHERE user_id = {$_SESSION['USER_ID']}
-                                AND article_id = {$article_id}";
-              
-              // Running the Bookmark Query
-              $bookmarkResult = mysqli_query($con, $bookmarkQuery);
-              
-              // Returns the number of rows from the result retrieved.
-              $bookmarkRow = mysqli_num_rows($bookmarkResult);
-              
-              // If query has any result (records) => User has the article bookmarked
-              if($bookmarkRow > 0) {
+        $user_sql =  "SELECT COUNT(user_id) 
+                        AS no_of_users 
+                        FROM user";
+        $user_result = mysqli_query($con,$user_sql);
+        $user_data = mysqli_fetch_assoc($user_result);
+        $no_of_users = $user_data['no_of_users'];
                 
-                // Updating the variable to true to have bookmarked icon on article card
-                $bookmarked = true;
-              }
-            }
-
-            // Calling user defined function to create an article card based upon given data
-            createArticleCard($article_title, $article_image, 
-                  $article_desc, $category_name, $category_id, $article_id, 
-                  $category_color, $new, $article_trend, $bookmarked,$article_videos);
-
-          }
-        }
-        // Calling user defined function to create a Addmore Card which directs to All Article Page
-        createMoreCard('./articles.php');
+        require('./includes/quick-links.inc.php');
       ?>
-
+      <div class="col-md-9">
+        <!-- Website Overview -->
+        <div class="panel panel-default">
+          <div class="panel-heading main-color-bg">
+            <h3 class="panel-title">Overview</h3>
+          </div>
+          <div class="panel-body" style="padding: 2.5rem;">
+            <div class="col-md-4">
+              <div class="well dash-box">
+                <h2>
+                  <span class="glyphicon glyphicon-pencil"></span>
+                  <?php echo $no_of_articles;?>
+                </h2>
+                <h4>Articles</h4>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="well dash-box">
+                <h2>
+                  <span class="glyphicon glyphicon-list-alt" aria-hidden="true"></span>
+                  <?php echo $no_of_categories;?>
+                </h2>
+                <h4>Categories</h4>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="well dash-box">
+                <h2>
+                  <span class="glyphicon glyphicon-user"></span>
+                  <?php echo $no_of_users;?>
+                </h2>
+                <h4>Users</h4>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-</section>
 
 
-<!-- Category List Container -->
-<section class="py-1 category-list">
-  <div class="container">
-    <h2 class="headings">Categories</h2>
-    <div class="card-container">
+    <!-- Latest Articles -->
+    <div class="row">
       <?php
-        // Category Query to fetch maximum 5 random category
-        $categoryQuery= " SELECT * 
-                          FROM category 
-                          ORDER BY RAND() LIMIT 5";
-        
-        // Running Category Query
-        $result = mysqli_query($con,$categoryQuery);
-        
-        // Returns the number of rows from the result retrieved.
-        $row = mysqli_num_rows($result);
 
-        // If query has any result (records) => If any categories are present
-        if($row > 0) {
+        $sql = "SELECT article.article_title, 
+                article.article_date, 
+                article.article_image, 
+                category.category_name,
+                author.author_name 
+                FROM article, category, author
+                WHERE article.category_id = category.category_id 
+                AND article.author_id  = author.author_id
+                ORDER BY article_date DESC
+                LIMIT 4";
+        $result = mysqli_query($con,$sql);
+        $row = mysqli_num_rows($result);
         
-          // Fetching the data of particular record as an Associative Array
-          while($data = mysqli_fetch_assoc($result)) {
-            
-            // Storing the category data in variables
-            $category_id = $data['category_id'];
-            $category_name = $data['category_name'];
-            $category_image = $data['category_image'];
-            $category_desc = $data['category_description'];
-            
-            // Calling user defined function to create an category card based upon given data
-            createCategoryCard($category_name,$category_image,$category_desc,$category_id,);   
-          }
-        }
-        // Calling user defined function to create a Addmore Card which directs to All Categories Page
-        createMoreCard('./categories.php');
       ?>
+      <div class="col-md-12">
+        <div class="panel panel-default">
+          <div class="panel-heading">
+            <h4 class="panel-title">Latest Articles</h4>
+          </div>
+          <div class="panel-body">
+            <table class="table table-striped article-list table-hover">
+              <tr>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Image</th>
+                <th>Author Name</th>
+                <th>Published On</th>
+              </tr>
+              <?php
+                if($row > 0) {
+                  while($data = mysqli_fetch_assoc($result)) {
+                    $category_name = $data['category_name'];
+                    $author_name = $data['author_name'];
+                    $article_title = $data['article_title'];
+                    $article_image = $data['article_image'];
+                    $article_date = $data['article_date'];
+                    $article_date = date("d M y",strtotime($article_date));
+
+                    echo '
+                      <tr>
+                        <td>
+                          '.$article_title.'
+                        </td>
+                        <td>
+                          '.$category_name.'
+                        </td>
+                        <td>
+                          <img src="../assets/images/articles/'.$article_image.'" />
+                        </td>
+                        <td>
+                          '.$author_name.'
+                        </td>
+                        <td>
+                          '.$article_date.'
+                        </td>
+                      </tr>
+                    ';
+                  }
+                  echo '
+                    <tr>
+                      <td colspan="5" align="center" style="padding-top: 2rem;">
+                        <a href="./articles.php" class="btn btn-danger ">View All</a>
+                      </td>
+                    </tr>
+                  ';
+                }
+                else {
+                  echo '
+                    <td colspan="4" align="center" style="padding-top: 28px; color: var(--active-color);">
+                      <h4>
+                        You need to start writing '.$_SESSION['AUTHOR_NAME'].' !
+                      </h4>
+                    </td>
+                  ';
+                }
+              ?>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
-
 
 <?php
-
-  // Fetching all the Footer Data
-  require('./includes/footer.inc.php');
+  require('./includes/footer.inc.php')
 ?>
